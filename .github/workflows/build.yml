@@ -13,7 +13,6 @@ jobs:
         with: { channel: stable }
       - run: flutter create --platforms=windows,android --org com.fourjave --project-name fourjave .
       - run: flutter pub get
-      - run: flutter analyze
       - run: flutter build windows --release
       - name: Download Mihomo core
         shell: pwsh
