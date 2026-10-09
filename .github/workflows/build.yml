@@ -1,0 +1,46 @@
+name: build
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with: { channel: stable }
+      - run: flutter create --platforms=windows,android --org com.fourjave --project-name fourjave .
+      - run: flutter pub get
+      - run: flutter analyze
+      - run: flutter build windows --release
+      - name: Download Mihomo core
+        shell: pwsh
+        run: |
+          $rel = Invoke-RestMethod https://api.github.com/repos/MetaCubeX/mihomo/releases/latest
+          $asset = $rel.assets | Where-Object { $_.name -match '^mihomo-windows-amd64-v\d.*\.zip$' -and $_.name -notmatch 'compatible|go\d' } | Select-Object -First 1
+          Invoke-WebRequest $asset.browser_download_url -OutFile core.zip
+          New-Item -ItemType Directory -Force build/windows/x64/runner/Release/core | Out-Null
+          Expand-Archive core.zip -DestinationPath core_tmp -Force
+          Copy-Item (Get-ChildItem core_tmp -Filter *.exe | Select-Object -First 1).FullName build/windows/x64/runner/Release/core/mihomo.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: 4jave-windows
+          path: build/windows/x64/runner/Release
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - uses: subosito/flutter-action@v2
+        with: { channel: stable }
+      - run: flutter create --platforms=windows,android --org com.fourjave --project-name fourjave .
+      - run: flutter pub get
+      - run: flutter build apk --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: 4jave-android
+          path: build/app/outputs/flutter-apk/app-release.apk
